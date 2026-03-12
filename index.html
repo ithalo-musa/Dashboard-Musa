@@ -236,6 +236,24 @@
   .estab-tbl .sep { border-left:1px solid var(--bord2); }
   .estab-tbl .msep { border-left:2px solid var(--bord2); }
 
+
+  /* Post-Sales estab popup */
+  .ps-estab-btn { background:var(--accent); color:#fff; border:none; border-radius:12px; padding:2px 9px; font-size:10px; font-weight:700; cursor:pointer; font-family:'Sora',sans-serif; position:relative; }
+  .ps-estab-btn:hover { background:var(--acc2); }
+  .ps-popup-wrap { position:relative; display:inline-block; }
+  .ps-popup { display:none; position:absolute; top:calc(100% + 4px); left:50%; transform:translateX(-50%); background:#fff; border:1px solid var(--bord2); border-radius:8px; padding:8px 0; min-width:220px; max-width:360px; max-height:260px; overflow-y:auto; z-index:999; box-shadow:0 4px 16px rgba(0,0,0,.12); }
+  .ps-popup.open { display:block; }
+  .ps-popup li { list-style:none; padding:5px 14px; font-size:11px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border-bottom:1px solid var(--border); }
+  .ps-popup li:last-child { border-bottom:none; }
+  .ps-popup li:hover { background:#f0f5ff; }
+  .agvf-exp { color:var(--red); font-weight:700; }
+  .agvf-ps  { color:var(--green); font-weight:700; }
+
+
+  .ps-view-btn { background:var(--card); color:var(--text2); border:1px solid var(--bord2); border-radius:6px; padding:4px 14px; font-size:11px; font-weight:600; cursor:pointer; font-family:'Sora',sans-serif; transition:.15s; }
+  .ps-view-btn:hover { background:var(--hover); }
+  .ps-view-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
 </style>
 </head>
 <body>
@@ -281,6 +299,7 @@
   <button class="tbtn active" onclick="switchTab('geral',this)">Scorecard</button>
   <button class="tbtn" onclick="switchTab('detalhe',this)">Scorecard Detalhado</button>
   <button class="tbtn" onclick="switchTab('ofensores',this)">Ofensores</button>
+  <button class="tbtn" onclick="switchTab('postsales',this)">Post-Sales</button>
   <button class="tbtn" onclick="switchTab('historico',this)">Historico por Gerador</button>
   <button class="tbtn" onclick="switchTab('graficos',this)">Graficos</button>
 </div>
@@ -323,6 +342,20 @@
     <div class="li"><div class="ld" style="background:var(--red)"></div>Custo</div>
     <div class="li"><div class="ld" style="background:var(--amber)"></div>KGs</div>
   </div>
+</div>
+
+
+<!-- TAB POST-SALES / CX -->
+<div class="tpanel" id="tab-postsales">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+    <div class="msel-wrap" id="postSalesMonthSelWrap" style="margin-bottom:0;display:none;"></div>
+    <div id="ps-view-toggle" style="display:flex;gap:4px;">
+      <button id="ps-btn-anual" class="ps-view-btn active" onclick="setPsViewMode('anual')">Visão Anual</button>
+      <button id="ps-btn-mensal" class="ps-view-btn" onclick="setPsViewMode('mensal')">Por Mês</button>
+    </div>
+    <p id="ps-subtitle" style="font-size:10px;color:var(--text3);margin:0;"></p>
+  </div>
+  <div class="tbl-wrap"><table id="tbl-postsales"></table></div>
 </div>
 
 <!-- TAB HISTÓRICO POR GERADOR -->
@@ -573,6 +606,8 @@ async function loadData() {
 }
 
 let activeOfensoresMes = null;
+let activePostSalesMes = null;
+let psViewMode = "anual"; // "mensal" | "anual"
 let activeMes      = "";
 let activeGeralMes = "";
 let activeHistGer  = "";
@@ -1661,6 +1696,185 @@ function buildOfensores() {
     </tr></tfoot>`;
 }
 
+
+function togglePsPopup(btn) {
+  document.querySelectorAll('.ps-popup.open').forEach(p => {
+    if (p !== btn.nextElementSibling) p.classList.remove('open');
+  });
+  btn.nextElementSibling.classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ps-popup-wrap')) {
+    document.querySelectorAll('.ps-popup.open').forEach(p => p.classList.remove('open'));
+  }
+});
+
+function buildPostSalesMonthSel() {
+  const wrap = document.getElementById('postSalesMonthSelWrap');
+  if (!wrap || !monthsMeta.length) return;
+  if (!activePostSalesMes) activePostSalesMes = monthsMeta[monthsMeta.length - 1].key;
+  wrap.innerHTML = '<span class="msel-lbl">Mes:</span>' + monthsMeta.map(m => {
+    const act = m.key === activePostSalesMes ? 'active' : '';
+    return `<button class="msel-btn ${act}" onclick="setPostSalesMes('${m.key}')">${m.label}</button>`;
+  }).join('');
+  // Hide month selector when in annual view
+  wrap.style.display = psViewMode === 'anual' ? 'none' : '';
+}
+
+function setPostSalesMes(key) {
+  activePostSalesMes = key;
+  buildPostSalesMonthSel();
+  buildPostSales();
+}
+
+function setPsViewMode(mode) {
+  psViewMode = mode;
+  document.querySelectorAll('.ps-view-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('ps-btn-' + mode)?.classList.add('active');
+  const wrap = document.getElementById('postSalesMonthSelWrap');
+  if (wrap) wrap.style.display = mode === 'anual' ? 'none' : '';
+  buildPostSales();
+}
+
+function buildPostSales() {
+  const tbl = document.getElementById('tbl-postsales');
+  if (!tbl || !monthsMeta.length) return;
+  if (!activePostSalesMes) activePostSalesMes = monthsMeta[monthsMeta.length - 1].key;
+
+  const sortedKeys = Object.keys(monthData).sort();
+
+  // All generators that EVER had rec_t >= 1 (persist across months)
+  const allGers = new Set();
+  sortedKeys.forEach(k => {
+    (monthData[k] || []).forEach(d => { if (d.rec_t >= 1) allGers.add(d.g); });
+  });
+
+  if (psViewMode === 'mensal') {
+    // ── MONTHLY VIEW ──────────────────────────────────────────────────────────
+    const mesKey = activePostSalesMes;
+    const mesLabel = monthsMeta.find(x => x.key === mesKey)?.label || mesKey;
+    document.getElementById('ps-subtitle').textContent =
+      `Geradores ativos no mês`;
+
+    const rows = [...allGers].map(g => {
+      const row   = (monthData[mesKey] || []).find(d => d.g === g);
+      const recBruta = row ? (effectiveRecCD(g, row.rec_cd) + row.rec_r) : null;
+      // Estab count + list for THIS month only
+      const estabArr  = ((estabelecimentosData[mesKey] || {})[g] || []);
+      const estabList = estabArr.map(e => e.name);
+      return { g, recBruta, estabCount: estabList.length, estabList };
+    });
+
+    // Mensal: só mostra geradores com receita > 0 no mês selecionado
+    const rowsFiltered = rows.filter(r => r.recBruta !== null && r.recBruta > 0);
+    rowsFiltered.sort((a, b) => b.recBruta - a.recBruta);
+
+    tbl.innerHTML = `<thead>
+      <tr class="mrow">
+        <th class="gth"></th>
+        <th style="text-align:center;border-left:1px solid var(--bord2);padding:8px;">ESTAB.</th>
+        <th style="text-align:right;border-left:1px solid var(--bord2);color:var(--accent);padding:8px;">RECEITA BRUTA</th>
+        <th style="text-align:center;border-left:2px solid var(--bord2);padding:8px;min-width:120px;">AGRUPAMENTO VF</th>
+        <th style="text-align:center;border-left:1px solid var(--bord2);padding:8px;min-width:100px;">CONTATO N2</th>
+      </tr>
+      <tr class="srow">
+        <th class="sl">GERADOR</th>
+        <th style="text-align:center;border-left:1px solid var(--bord2);">${mesLabel}</th>
+        <th style="text-align:right;border-left:1px solid var(--bord2);">${mesLabel}</th>
+        <th style="text-align:center;border-left:2px solid var(--bord2);">≤ 30k → Experiencia</th>
+        <th style="text-align:center;border-left:1px solid var(--bord2);">RESPONSÁVEL</th>
+      </tr></thead>
+      <tbody>${rowsFiltered.map(row => {
+        const isPS  = row.recBruta > 30000;
+        const agvf  = row.recBruta === null
+          ? '<span style="color:var(--text3);font-size:11px;">--</span>'
+          : isPS ? '<span class="agvf-ps">Post-Sales</span>' : '<span class="agvf-exp">Experiencia</span>';
+        const n2    = row.recBruta === null ? '<span style="color:var(--text3)">--</span>' : isPS ? 'Monica' : 'XP';
+        const recCell = row.recBruta !== null
+          ? `<td style="text-align:right;color:var(--accent);border-left:1px solid var(--bord2);">${fmtR(row.recBruta)}</td>`
+          : `<td style="text-align:right;border-left:1px solid var(--bord2);color:var(--text3);">--</td>`;
+        const estabCell = row.estabCount > 0
+          ? `<div class="ps-popup-wrap">
+              <button class="ps-estab-btn" onclick="togglePsPopup(this)">${row.estabCount}</button>
+              <ul class="ps-popup">${row.estabList.map(n => `<li>${n}</li>`).join('')}</ul>
+            </div>`
+          : `<span style="color:var(--text3);font-size:11px;">0</span>`;
+        return `<tr>
+          <td class="gc">${row.g}</td>
+          <td style="text-align:center;border-left:1px solid var(--bord2);">${estabCell}</td>
+          ${recCell}
+          <td style="text-align:center;border-left:2px solid var(--bord2);">${agvf}</td>
+          <td style="text-align:center;border-left:1px solid var(--bord2);font-weight:600;">${n2}</td>
+        </tr>`;
+      }).join('')}
+      </tbody>`;
+
+  } else {
+    // ── ANNUAL VIEW ──────────────────────────────────────────────────────────
+    document.getElementById('ps-subtitle').textContent =
+      '';
+
+    const monthCols = sortedKeys.map(k => monthsMeta.find(x => x.key === k) || { key: k, label: k });
+
+    const rows = [...allGers].map(g => {
+      // Per-month receita
+      const perMonth = {};
+      let totalAnual = 0;
+      sortedKeys.forEach(k => {
+        const row = (monthData[k] || []).find(d => d.g === g);
+        const v   = row ? (effectiveRecCD(g, row.rec_cd) + row.rec_r) : null;
+        perMonth[k] = v;
+        if (v !== null) totalAnual += v;
+      });
+      // Distinct estab across ALL months
+      const estabSet = new Set();
+      sortedKeys.forEach(k => {
+        ((estabelecimentosData[k] || {})[g] || []).forEach(e => estabSet.add(e.name));
+      });
+      return { g, perMonth, totalAnual, estabCount: estabSet.size, estabList: [...estabSet] };
+    });
+
+    rows.sort((a, b) => b.totalAnual - a.totalAnual);
+
+    tbl.innerHTML = `<thead>
+      <tr class="mrow">
+        <th class="gth" rowspan="2" style="vertical-align:middle;">GERADOR</th>
+        <th rowspan="2" style="vertical-align:middle;text-align:center;border-left:1px solid var(--bord2);padding:8px;">ESTAB.<br><span style="font-size:9px;font-weight:400;color:var(--text3)">distinct</span></th>
+        <th colspan="${monthCols.length}" style="text-align:center;border-left:1px solid var(--bord2);color:var(--accent);padding:8px;">RECEITA BRUTA POR MÊS</th>
+        <th rowspan="2" style="vertical-align:middle;text-align:right;border-left:2px solid var(--accent);padding:8px;color:var(--accent);">TOTAL ANUAL</th>
+        <th rowspan="2" style="vertical-align:middle;text-align:center;border-left:2px solid var(--bord2);padding:8px;min-width:120px;">AGRUPAMENTO VF</th>
+        <th rowspan="2" style="vertical-align:middle;text-align:center;border-left:1px solid var(--bord2);padding:8px;min-width:100px;">CONTATO N2</th>
+      </tr>
+      <tr class="srow">
+        ${monthCols.map((m, i) => `<th style="text-align:right;${i===0?'border-left:1px solid var(--bord2);':''}">${m.label}</th>`).join('')}
+      </tr></thead>
+      <tbody>${rows.map(row => {
+        const isPS  = row.totalAnual > 30000;
+        const agvf  = isPS ? '<span class="agvf-ps">Post-Sales</span>' : '<span class="agvf-exp">Experiencia</span>';
+        const n2    = isPS ? 'Monica' : 'XP';
+        const estabCell = row.estabCount > 0
+          ? `<div class="ps-popup-wrap">
+              <button class="ps-estab-btn" onclick="togglePsPopup(this)">${row.estabCount}</button>
+              <ul class="ps-popup">${row.estabList.map(n => `<li>${n}</li>`).join('')}</ul>
+            </div>`
+          : `<span style="color:var(--text3);font-size:11px;">0</span>`;
+        const monthCells = monthCols.map((m, i) => {
+          const v = row.perMonth[m.key];
+          return `<td style="text-align:right;${i===0?'border-left:1px solid var(--bord2);':''}">${v !== null ? fmtR(v) : '<span style="color:var(--text3)">--</span>'}</td>`;
+        }).join('');
+        return `<tr>
+          <td class="gc">${row.g}</td>
+          <td style="text-align:center;border-left:1px solid var(--bord2);">${estabCell}</td>
+          ${monthCells}
+          <td style="text-align:right;color:var(--accent);font-weight:700;border-left:2px solid var(--accent);">${fmtR(row.totalAnual)}</td>
+          <td style="text-align:center;border-left:2px solid var(--bord2);">${agvf}</td>
+          <td style="text-align:center;border-left:1px solid var(--bord2);font-weight:600;">${n2}</td>
+        </tr>`;
+      }).join('')}
+      </tbody>`;
+  }
+}
+
 function switchTab(name, btn) {
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('active'));
@@ -1669,6 +1883,7 @@ function switchTab(name, btn) {
   if (name==='graficos') setTimeout(buildCharts,50);
   if (name==='historico') buildHistorico();
   if (name==='ofensores') { buildOfensoresMonthSel(); buildOfensores(); }
+  if (name==='postsales') { buildPostSalesMonthSel(); buildPostSales(); }
 }
 
 // RENDER ALL
@@ -1680,10 +1895,12 @@ function renderAll() {
   buildMonthSel();
   buildDetalhe();
   buildOfensoresMonthSel();
+  buildPostSalesMonthSel();
   const active = document.querySelector('.tpanel.active')?.id;
   if (active==='tab-graficos') buildCharts();
   if (active==='tab-historico') buildHistorico();
   if (active==='tab-ofensores') buildOfensores();
+  if (active==='tab-postsales') buildPostSales();
 }
 
 // RELOAD — retriggers full data load and updates timestamp
