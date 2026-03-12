@@ -278,8 +278,9 @@
 
 <!-- TABS -->
 <div class="tabs">
-  <button class="tbtn active" onclick="switchTab('geral',this)">Visao Geral</button>
-  <button class="tbtn" onclick="switchTab('detalhe',this)">Analise Detalhada</button>
+  <button class="tbtn active" onclick="switchTab('geral',this)">Scorecard</button>
+  <button class="tbtn" onclick="switchTab('detalhe',this)">Scorecard Detalhado</button>
+  <button class="tbtn" onclick="switchTab('ofensores',this)">Ofensores</button>
   <button class="tbtn" onclick="switchTab('historico',this)">Historico por Gerador</button>
   <button class="tbtn" onclick="switchTab('graficos',this)">Graficos</button>
 </div>
@@ -308,6 +309,19 @@
   <div class="legend">
     <div class="li"><div class="ld" style="background:var(--accent)"></div>CD = Coleta e Destinacao</div>
     <div class="li"><div class="ld" style="background:#6366f1"></div>REC = Reciclaveis</div>
+  </div>
+</div>
+
+<!-- TAB OFENSORES -->
+<div class="tpanel" id="tab-ofensores">
+  <div class="msel-wrap" id="ofensoresMonthSelWrap"></div>
+  <p style="font-size:10px;color:var(--text3);margin-bottom:12px;">Top 50 geradores com maior destruicao de Margem &mdash; ordem crescente de Margem Liquida</p>
+  <div class="tbl-wrap"><table id="tbl-ofensores"></table></div>
+  <div class="legend">
+    <div class="li"><div class="ld" style="background:var(--green)"></div>Margem Liquida</div>
+    <div class="li"><div class="ld" style="background:var(--accent)"></div>Receita Bruta</div>
+    <div class="li"><div class="ld" style="background:var(--red)"></div>Custo</div>
+    <div class="li"><div class="ld" style="background:var(--amber)"></div>KGs</div>
   </div>
 </div>
 
@@ -558,6 +572,7 @@ async function loadData() {
   }
 }
 
+let activeOfensoresMes = null;
 let activeMes      = "";
 let activeGeralMes = "";
 let activeHistGer  = "";
@@ -571,11 +586,25 @@ const fmt  = v => (v==null)?'--':v.toLocaleString('pt-BR',{minimumFractionDigits
 const fmtR = v => (v==null)?'--':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtP = v => (v==null)?'--':v.toFixed(1)+'%';
 
+// Receita CD overrides (valores reais de contrato — substituem o CSV)
+const REC_CD_OVERRIDE = {
+  'Jadlog':                                        44027,
+  'Maxsoy Alimentos':                              12025,
+  'SBT':                                           97401,
+  'Fornô':                                         7292.99,
+  'São Paulo Catarina Aeroporto Executivo Internacional': 7785,
+};
+
 function margin(rec_cd, rec_rec, cus) {
   const base = (rec_cd * 0.93) + rec_rec;
   if (!base || base === 0) return null;
   return ((base - cus) / base) * 100;
 }
+
+function effectiveRecCD(g, rec_cd) {
+  return (REC_CD_OVERRIDE[g] !== undefined) ? REC_CD_OVERRIDE[g] : rec_cd;
+}
+
 
 function pillHtml(m) {
   if (m===null) return '<span class="pill pna">N/A</span>';
@@ -697,14 +726,14 @@ function buildEstabChildRows(ger, mes, prevKey, mode, wrId, hasPrev) {
 
     bodyHtml = sorted.map(r => {
       const recT=r.rec_cd+r.rec_r, cusT=r.cus_cd+r.cus_r, kgsT=r.kgs_cd+r.kgs_r;
-      const m = margin(r.rec_cd, r.rec_r, cusT);
-      tRec+=recT; tCus+=cusT; tKgs+=kgsT; tRecCD+=r.rec_cd; tRecR+=r.rec_r;
+      const m = margin(effectiveRecCD(r.name,r.rec_cd), r.rec_r, cusT);
+      tRec+=recT; tCus+=cusT; tKgs+=kgsT; tRecCD+=effectiveRecCD(r.g,r.rec_cd); tRecR+=r.rec_r;
 
       const pRow = prevRows.find(x => x.name === r.name);
       const pRecT = pRow ? pRow.rec_cd+pRow.rec_r : null;
       const pCusT = pRow ? pRow.cus_cd+pRow.cus_r : null;
-      const pm    = pRow ? margin(pRow.rec_cd, pRow.rec_r, pCusT) : null;
-      if (pRow) { tPRec+=pRecT; tPCus+=pCusT; tPRecCD+=pRow.rec_cd; tPRecR+=pRow.rec_r; hasPrevAny=true; }
+      const pm    = pRow ? margin(effectiveRecCD(pRow.name,pRow.rec_cd), pRow.rec_r, pCusT) : null;
+      if (pRow) { tPRec+=pRecT; tPCus+=pCusT; tPRecCD+=effectiveRecCD(pRow.g,pRow.rec_cd); tPRecR+=pRow.rec_r; hasPrevAny=true; }
 
       // Always render 2 MoM cells — parent table always has 7 cols
       let mom1 = '<td class="dna msep">--</td>';
@@ -771,14 +800,14 @@ function buildEstabChildRows(ger, mes, prevKey, mode, wrId, hasPrev) {
     const nc = hasPrev ? 4 : 2;
 
     bodyHtml = sorted.map(r => {
-      const mCD=margin(r.rec_cd,0,r.cus_cd), mRE=margin(0,r.rec_r,r.cus_r);
-      const mTot=margin(r.rec_cd,r.rec_r,r.cus_cd+r.cus_r);
+      const mCD=margin(effectiveRecCD(r.name,r.rec_cd),0,r.cus_cd), mRE=margin(0,r.rec_r,r.cus_r);
+      const mTot=margin(effectiveRecCD(r.name,r.rec_cd),r.rec_r,r.cus_cd+r.cus_r);
       tRC+=r.rec_cd; tRR+=r.rec_r; tCC+=r.cus_cd; tCR+=r.cus_r; tKC+=r.kgs_cd; tKR+=r.kgs_r;
 
       const pRow=prevRows.find(x=>x.name===r.name);
-      const pmCD=pRow?margin(pRow.rec_cd,0,pRow.cus_cd):null;
+      const pmCD=pRow?margin(effectiveRecCD(pRow.name,pRow.rec_cd),0,pRow.cus_cd):null;
       const pmRE=pRow?margin(0,pRow.rec_r,pRow.cus_r):null;
-      const pmTot=pRow?margin(pRow.rec_cd,pRow.rec_r,pRow.cus_cd+pRow.cus_r):null;
+      const pmTot=pRow?margin(effectiveRecCD(pRow.name,pRow.rec_cd),pRow.rec_r,pRow.cus_cd+pRow.cus_r):null;
       if (pRow) { tPRC+=pRow.rec_cd; tPRR+=pRow.rec_r; tPCC+=pRow.cus_cd; tPCR+=pRow.cus_r; hasPrevAny=true; }
 
       const dR=hasPrev?(pRow?`${deltaCell(r.rec_cd,pRow.rec_cd)}${deltaCell(r.rec_r,pRow.rec_r)}`:'<td class="dna">--</td><td class="dna">--</td>'):'';;
@@ -853,6 +882,46 @@ function buildEstabChildRows(ger, mes, prevKey, mode, wrId, hasPrev) {
     </tr>`;
   }
 
+  // ── OFENSORES MODE ────────────────────────────────────────────────────────
+  if (mode === 'ofensores') {
+    // Columns: Nome | Margem | Receita Bruta | Custo | KGs  (colspan=5)
+    let tRec=0, tCus=0, tKgs=0;
+
+    bodyHtml = sorted.map(r => {
+      const recBruta = effectiveRecCD(r.name, r.rec_cd) + r.rec_r;
+      const cusT     = r.cus_cd + r.cus_r;
+      const kgsT     = r.kgs_cd + r.kgs_r;
+      const m        = margin(effectiveRecCD(r.name, r.rec_cd), r.rec_r, cusT);
+      tRec += recBruta; tCus += cusT; tKgs += kgsT;
+      return `<tr>
+        <td>${r.name}</td>
+        <td style="text-align:center;">${pillHtml(m)}</td>
+        <td style="text-align:right;color:var(--accent);border-left:1px solid var(--bord2);">${fmtR(recBruta)}</td>
+        <td style="text-align:right;color:var(--red);border-left:1px solid var(--bord2);">${fmtR(cusT)}</td>
+        <td style="text-align:right;color:var(--amber);border-left:1px solid var(--bord2);">${fmt(kgsT)} kg</td>
+      </tr>`;
+    }).join('');
+
+    footHtml = `<tr>
+      <td>TOTAL <span style="font-weight:400;font-size:10px;color:var(--text3)">(${sorted.length})</span></td>
+      <td></td>
+      <td style="text-align:right;border-left:1px solid var(--bord2);">${fmtR(tRec)}</td>
+      <td style="text-align:right;color:var(--red);border-left:1px solid var(--bord2);">${fmtR(tCus)}</td>
+      <td style="text-align:right;color:var(--amber);border-left:1px solid var(--bord2);">${fmt(tKgs)} kg</td>
+    </tr>`;
+
+    return `<tr id="${wrId}" class="estab-wrap-row">
+      <td class="estab-wrap-td" colspan="5">
+        <div class="estab-scroll-div">
+          <table class="estab-tbl">
+            <tbody>${bodyHtml}</tbody>
+            <tfoot>${footHtml}</tfoot>
+          </table>
+        </div>
+      </td>
+    </tr>`;
+  }
+
   return '';
 }
 
@@ -862,7 +931,7 @@ function buildKPI() {
   const tR   = data.reduce((s,d)=>s+d.rec_t,0);
   const tC   = data.reduce((s,d)=>s+d.cus_t,0);
   const tK   = data.reduce((s,d)=>s+d.kgs_t,0);
-  const tRcd = data.reduce((s,d)=>s+d.rec_cd,0);
+  const tRcd = data.reduce((s,d)=>s+effectiveRecCD(d.g,d.rec_cd),0);
   const tRr  = data.reduce((s,d)=>s+d.rec_r,0);
   const tCcd = data.reduce((s,d)=>s+d.cus_cd,0);
   const tCr  = data.reduce((s,d)=>s+d.cus_r,0);
@@ -939,7 +1008,7 @@ function buildGeral() {
   const tR   = data.reduce((s,d)=>s+d.rec_t,0);
   const tC   = data.reduce((s,d)=>s+d.cus_t,0);
   const tK   = data.reduce((s,d)=>s+d.kgs_t,0);
-  const tRcd = data.reduce((s,d)=>s+d.rec_cd,0);
+  const tRcd = data.reduce((s,d)=>s+effectiveRecCD(d.g,d.rec_cd),0);
   const tRr  = data.reduce((s,d)=>s+d.rec_r,0);
 
   const tbl = document.getElementById('tbl-geral');
@@ -966,9 +1035,9 @@ function buildGeral() {
       <th class="tdelta">MoM MARGEM</th>
     </tr></thead>
     <tbody>${data.map((d, i) => {
-      const m    = margin(d.rec_cd, d.rec_r, d.cus_t);
+      const m    = margin(effectiveRecCD(d.g,d.rec_cd), d.rec_r, d.cus_t);
       const pRow = hasPrev ? prev.find(x => x.g === d.g) : null;
-      const pm   = pRow ? margin(pRow.rec_cd, pRow.rec_r, pRow.cus_t) : null;
+      const pm   = pRow ? margin(effectiveRecCD(pRow.g,pRow.rec_cd), pRow.rec_r, pRow.cus_t) : null;
 
       // MoM Receita %
       let momRecCell = '<td class="dna" style="border-left:2px solid var(--bord2)">--</td>';
@@ -1068,10 +1137,10 @@ function buildDetalhe() {
     </tr></thead>
     <tbody>${data.map((d,di)=>{
       const pRow=hasPrev?prevData.find(x=>x.g===d.g):null;
-      const mCD=margin(d.rec_cd,0,d.cus_cd), mRE=margin(0,d.rec_r,d.cus_r);
-      const mTot=margin(d.rec_cd,d.rec_r,d.cus_t);
-      const pmCD=pRow?margin(pRow.rec_cd,0,pRow.cus_cd):null, pmRE=pRow?margin(0,pRow.rec_r,pRow.cus_r):null;
-      const pmTot=pRow?margin(pRow.rec_cd,pRow.rec_r,pRow.cus_t):null;
+      const mCD=margin(effectiveRecCD(d.g,d.rec_cd),0,d.cus_cd), mRE=margin(0,d.rec_r,d.cus_r);
+      const mTot=margin(effectiveRecCD(d.g,d.rec_cd),d.rec_r,d.cus_t);
+      const pmCD=pRow?margin(effectiveRecCD(pRow.name,pRow.rec_cd),0,pRow.cus_cd):null, pmRE=pRow?margin(0,pRow.rec_r,pRow.cus_r):null;
+      const pmTot=pRow?margin(effectiveRecCD(pRow.g,pRow.rec_cd),pRow.rec_r,pRow.cus_t):null;
       const dR=hasPrev&&pRow?`${deltaCell(d.rec_cd,pRow.rec_cd)}${deltaCell(d.rec_r,pRow.rec_r)}`:'';
       const dC=hasPrev&&pRow?`${deltaCell(d.cus_cd,pRow.cus_cd)}${deltaCell(d.cus_r,pRow.cus_r)}`:'';
       const dK=hasPrev&&pRow?`${deltaCell(d.kgs_cd,pRow.kgs_cd)}${deltaCell(d.kgs_r,pRow.kgs_r)}`:'';
@@ -1146,8 +1215,8 @@ function buildCharts() {
   const data = filtered(activeGeralMes);
 
   // 1. Margem Liquida horizontal
-  const sM=[...data].sort((a,b)=>(margin(b.rec_cd,b.rec_r,b.cus_t)||-999)-(margin(a.rec_cd,a.rec_r,a.cus_t)||-999));
-  const mVals=sM.map(d=>{ const m=margin(d.rec_cd,d.rec_r,d.cus_t); return m!==null?+m.toFixed(1):0; });
+  const sM=[...data].sort((a,b)=>(margin(effectiveRecCD(b.g,b.rec_cd),b.rec_r,b.cus_t)||-999)-(margin(effectiveRecCD(a.g,a.rec_cd),a.rec_r,a.cus_t)||-999));
+  const mVals=sM.map(d=>{ const m=margin(effectiveRecCD(d.g,d.rec_cd),d.rec_r,d.cus_t); return m!==null?+m.toFixed(1):0; });
   const mColors=mVals.map(v=>v>=0?'#1d4ed8':'#93c5fd');
   charts.margem=new Chart(document.getElementById('chartMargem'),{
     type:'bar',
@@ -1292,11 +1361,11 @@ function buildHistorico() {
       const arr = filtered(key);
       const d   = arr.find(x => x.g === activeHistGer);
       if (!d) return null;
-      const m = margin(d.rec_cd, d.rec_r, d.cus_t);
+      const m = margin(effectiveRecCD(d.g,d.rec_cd), d.rec_r, d.cus_t);
       const prevKey = i > 0 ? sortedKeys[i-1] : null;
       const prevArr = prevKey ? filtered(prevKey) : null;
       const pRow = prevArr ? prevArr.find(x => x.g === activeHistGer) : null;
-      const pm   = pRow ? margin(pRow.rec_cd, pRow.rec_r, pRow.cus_t) : null;
+      const pm   = pRow ? margin(effectiveRecCD(pRow.g,pRow.rec_cd), pRow.rec_r, pRow.cus_t) : null;
       let momRecVal='--', momRecCl='dna', momMarVal='--', momMarCl='dna';
       if (pRow && pRow.rec_t) {
         const pct=((d.rec_t-pRow.rec_t)/Math.abs(pRow.rec_t))*100;
@@ -1346,7 +1415,7 @@ function buildHistorico() {
         id:'mar', lbl:'Margem Liquida',
         cells: cols.map(col=>`<td class="${col.m===null?'mna':col.m>=0?'mpos':'mneg'}" style="text-align:center">${pillHtml(col.m)}</td>`),
         sub: [
-          { lbl:'CD',  cells: cols.map(col=>{ const mCD=margin(col.d.rec_cd,0,col.d.cus_cd); return `<td class="${mCD===null?'mna':mCD>=0?'mpos':'mneg'}" style="text-align:center">${pillHtml(mCD)}</td>`; }) },
+          { lbl:'CD',  cells: cols.map(col=>{ const mCD=margin(effectiveRecCD(col.d.g,col.d.rec_cd),0,col.d.cus_cd); return `<td class="${mCD===null?'mna':mCD>=0?'mpos':'mneg'}" style="text-align:center">${pillHtml(mCD)}</td>`; }) },
           { lbl:'REC', cells: cols.map(col=>{ const mRE=margin(0,col.d.rec_r,col.d.cus_r); return `<td class="${mRE===null?'mna':mRE>=0?'mpos':'mneg'}" style="text-align:center">${pillHtml(mRE)}</td>`; }) },
         ]
       },
@@ -1396,13 +1465,13 @@ function buildHistorico() {
     const r = mesEstabs.find(x => x.name === activeHistEstab);
     if (!r) return null;
     const recT=r.rec_cd+r.rec_r, cusT=r.cus_cd+r.cus_r, kgsT=r.kgs_cd+r.kgs_r;
-    const m = margin(r.rec_cd, r.rec_r, cusT);
+    const m = margin(effectiveRecCD(r.name,r.rec_cd), r.rec_r, cusT);
     const prevKey = i > 0 ? sortedKeys[i-1] : null;
     const prevEstabs = prevKey ? ((estabelecimentosData[prevKey] || {})[activeHistEstabGer] || []) : [];
     const pRow = prevEstabs.find(x => x.name === activeHistEstab);
     const pRecT = pRow ? pRow.rec_cd+pRow.rec_r : null;
     const pCusT = pRow ? pRow.cus_cd+pRow.cus_r : null;
-    const pm = pRow ? margin(pRow.rec_cd, pRow.rec_r, pCusT) : null;
+    const pm = pRow ? margin(effectiveRecCD(pRow.name,pRow.rec_cd), pRow.rec_r, pCusT) : null;
     let momRecVal='--', momRecCl='dna', momMarVal='--', momMarCl='dna';
     if (pRow && pRecT) {
       const pct=((recT-pRecT)/Math.abs(pRecT))*100;
@@ -1411,7 +1480,7 @@ function buildHistorico() {
     if (m!==null && pm!==null) {
       const pp=m-pm; momMarVal=(pp>0?'+':'')+pp.toFixed(1)+' pp'; momMarCl=pp>0?'dp':pp<0?'dn':'dna';
     }
-    const mCD=margin(r.rec_cd,0,r.cus_cd), mRE=margin(0,r.rec_r,r.cus_r);
+    const mCD=margin(effectiveRecCD(r.name,r.rec_cd),0,r.cus_cd), mRE=margin(0,r.rec_r,r.cus_r);
     const meta=monthsMeta.find(x=>x.key===key);
     return {lbl:meta?meta.label:key, recT, cusT, kgsT, m, mCD, mRE,
             rec_cd:r.rec_cd, rec_r:r.rec_r, cus_cd:r.cus_cd, cus_r:r.cus_r,
@@ -1509,6 +1578,89 @@ function setHistGer(val) {
 }
 
 // TABS
+
+function buildOfensoresMonthSel() {
+  const w = document.getElementById('ofensoresMonthSelWrap');
+  if (!w) return;
+  w.innerHTML = '<span class="msel-lbl">Mes:</span>' +
+    monthsMeta.map(m => {
+      const has = !!monthData[m.key];
+      const act = m.key === activeOfensoresMes ? 'active' : '';
+      const dis = has ? '' : 'disabled';
+      return `<button class="msel-btn ${act}" ${dis} onclick="setOfensoresMes('${m.key}')">${m.label}</button>`;
+    }).join('');
+}
+
+function setOfensoresMes(key) {
+  activeOfensoresMes = key;
+  buildOfensoresMonthSel();
+  buildOfensores();
+}
+
+function buildOfensores() {
+  const tbl = document.getElementById('tbl-ofensores');
+  if (!tbl) return;
+
+  const raw = (monthData[activeOfensoresMes] || []).filter(d => d.cus_t >= 1);
+
+  const data = raw.map(d => {
+    const eff_rec_cd = effectiveRecCD(d.g, d.rec_cd);
+    const m = margin(eff_rec_cd, d.rec_r, d.cus_t);
+    return { ...d, eff_rec_cd, m };
+  });
+
+  const sorted = [...data]
+    .sort((a, b) => {
+      if (a.m === null && b.m === null) return 0;
+      if (a.m === null) return 1;
+      if (b.m === null) return -1;
+      return a.m - b.m;
+    })
+    .slice(0, 50);
+
+  tbl.innerHTML = `<thead>
+    <tr class="mrow">
+      <th class="gth"></th>
+      <th style="color:var(--green);text-align:center;padding:8px 12px;">MARGEM LIQUIDA</th>
+      <th style="color:var(--accent);text-align:right;padding:8px 12px;border-left:1px solid var(--bord2);">RECEITA BRUTA</th>
+      <th style="color:var(--red);text-align:right;padding:8px 12px;border-left:1px solid var(--bord2);">CUSTO</th>
+      <th style="color:var(--amber);text-align:right;padding:8px 12px;border-left:1px solid var(--bord2);">KGs</th>
+    </tr>
+    <tr class="srow">
+      <th class="sl">GERADOR</th>
+      <th style="text-align:center;">MARGEM</th>
+      <th style="text-align:right;border-left:1px solid var(--bord2);">RECEITA BRUTA</th>
+      <th style="text-align:right;border-left:1px solid var(--bord2);">CUSTO</th>
+      <th style="text-align:right;border-left:1px solid var(--bord2);">KGs</th>
+    </tr></thead>
+    <tbody>${sorted.map((d, i) => {
+      const recBruta = d.eff_rec_cd + d.rec_r;
+      const hasEstab = !!(estabelecimentosData[activeOfensoresMes] && estabelecimentosData[activeOfensoresMes][d.g]);
+      const oId = 'eoff-' + i;
+      const arrowBtn = hasEstab
+        ? `<button class="exp-btn" onclick="toggleExpand(this,'${oId}')" title="Ver estabelecimentos">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 2l4 3-4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>`
+        : '';
+      const estabRow = hasEstab ? buildEstabChildRows(d.g, activeOfensoresMes, null, 'ofensores', oId, false) : '';
+      return `<tr>
+        <td class="gc">${arrowBtn}${i+1}. ${d.g}</td>
+        <td style="text-align:center;">${pillHtml(d.m)}</td>
+        <td style="text-align:right;color:var(--accent);border-left:1px solid var(--bord2);">${fmtR(recBruta)}</td>
+        <td style="text-align:right;color:var(--red);border-left:1px solid var(--bord2);">${fmtR(d.cus_t)}</td>
+        <td style="text-align:right;color:var(--amber);border-left:1px solid var(--bord2);">${fmt(d.kgs_t)} kg</td>
+      </tr>${estabRow}`;
+    }).join('')}
+    </tbody>
+    <tfoot><tr>
+      <td class="gc">TOTAL (${sorted.length} geradores)</td>
+      <td></td>
+      <td style="text-align:right;border-left:1px solid var(--bord2);">${fmtR(sorted.reduce((s,d)=>s+(d.eff_rec_cd+d.rec_r),0))}</td>
+      <td style="text-align:right;color:var(--red);border-left:1px solid var(--bord2);">${fmtR(sorted.reduce((s,d)=>s+d.cus_t,0))}</td>
+      <td style="text-align:right;color:var(--amber);border-left:1px solid var(--bord2);">${fmt(sorted.reduce((s,d)=>s+d.kgs_t,0))} kg</td>
+    </tr></tfoot>`;
+}
+
 function switchTab(name, btn) {
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('active'));
@@ -1516,6 +1668,7 @@ function switchTab(name, btn) {
   document.getElementById('tab-'+name).classList.add('active');
   if (name==='graficos') setTimeout(buildCharts,50);
   if (name==='historico') buildHistorico();
+  if (name==='ofensores') { buildOfensoresMonthSel(); buildOfensores(); }
 }
 
 // RENDER ALL
@@ -1526,9 +1679,11 @@ function renderAll() {
   buildGeral();
   buildMonthSel();
   buildDetalhe();
+  buildOfensoresMonthSel();
   const active = document.querySelector('.tpanel.active')?.id;
   if (active==='tab-graficos') buildCharts();
   if (active==='tab-historico') buildHistorico();
+  if (active==='tab-ofensores') buildOfensores();
 }
 
 // RELOAD — retriggers full data load and updates timestamp
