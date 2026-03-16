@@ -597,6 +597,34 @@ async function loadData() {
     overlay.style.display = 'none';
     document.getElementById('mainContent').style.display = 'block';
 
+    // ── Post-processing: Casa Traffô → Grupo Bisutti establishment ──────────────
+    Object.keys(monthData).forEach(mes => {
+      // Find Casa Traffô generator row
+      const traffoIdx = monthData[mes].findIndex(d => d.g === 'Casa Traffô');
+      if (traffoIdx === -1) return;
+      const traffo = monthData[mes][traffoIdx];
+
+      // Add as establishment under Grupo Bisutti
+      if (!estabelecimentosData[mes]) estabelecimentosData[mes] = {};
+      if (!estabelecimentosData[mes]['Grupo Bisutti']) estabelecimentosData[mes]['Grupo Bisutti'] = [];
+      // Only add if not already present
+      if (!estabelecimentosData[mes]['Grupo Bisutti'].find(e => e.name === 'Casa Traffô')) {
+        estabelecimentosData[mes]['Grupo Bisutti'].push({
+          name:   'Casa Traffô',
+          kgs_cd: traffo.kgs_cd,
+          rec_cd: traffo.rec_cd,
+          cus_cd: traffo.cus_cd,
+          kgs_r:  traffo.kgs_r,
+          rec_r:  traffo.rec_r,
+          cus_r:  traffo.cus_r,
+        });
+      }
+
+      // Remove from generators
+      monthData[mes].splice(traffoIdx, 1);
+    });
+    // ─────────────────────────────────────────────────────────────────────────
+
     populateFilter();
     renderAll();
 
@@ -632,6 +660,7 @@ const REC_CD_OVERRIDE = {
   'SBT':                                           97401,
   'Fornô':                                         7292.99,
   'São Paulo Catarina Aeroporto Executivo Internacional': 7785,
+  'Grupo Bisutti':                                         33432,
 };
 
 function margin(rec_cd, rec_rec, cus) {
@@ -644,6 +673,28 @@ function effectiveRecCD(g, rec_cd) {
   return (REC_CD_OVERRIDE[g] !== undefined) ? REC_CD_OVERRIDE[g] : rec_cd;
 }
 
+
+
+// Establishment-level rec_cd overrides (manual correction)
+const ESTAB_REC_CD_OVERRIDE = {
+  'Villa Bisutti Gomes de Carvalho': 1985.5,
+  'Casa Itaim':                      3305.5,
+  'Teneriffe':                       2728,
+  'Viale 441':                       676.5,
+  'Contemporâneo 8076':              2552,
+  'Casa Bisutti':                    2931.5,
+  'Villa Bisutti-Casa do Ator':      3542,
+  'Bisutti Berrini':                 36,
+  'Casa Traffô':                     4295.5,
+  'Bisutti - Octavio House':         7012.5,
+  'ESPAÇO 011':                      1314.5,
+  'Artgusto Gastronomia':            2640,
+  'Doces Finos':                     412.5,
+};
+
+function effectiveEstabRecCD(name, rec_cd) {
+  return (ESTAB_REC_CD_OVERRIDE[name] !== undefined) ? ESTAB_REC_CD_OVERRIDE[name] : rec_cd;
+}
 
 function pillHtml(m) {
   if (m===null) return '<span class="pill pna">N/A</span>';
@@ -764,15 +815,17 @@ function buildEstabChildRows(ger, mes, prevKey, mode, wrId, hasPrev) {
     let tRec=0, tCus=0, tKgs=0, tRecCD=0, tRecR=0, tPRec=0, tPCus=0, tPRecCD=0, tPRecR=0, hasPrevAny=false;
 
     bodyHtml = sorted.map(r => {
-      const recT=r.rec_cd+r.rec_r, cusT=r.cus_cd+r.cus_r, kgsT=r.kgs_cd+r.kgs_r;
-      const m = margin(effectiveRecCD(r.name,r.rec_cd), r.rec_r, cusT);
-      tRec+=recT; tCus+=cusT; tKgs+=kgsT; tRecCD+=effectiveRecCD(r.g,r.rec_cd); tRecR+=r.rec_r;
+      const effRcd=effectiveEstabRecCD(r.name,r.rec_cd);
+      const recT=effRcd+r.rec_r, cusT=r.cus_cd+r.cus_r, kgsT=r.kgs_cd+r.kgs_r;
+      const m = margin(effRcd, r.rec_r, cusT);
+      tRec+=recT; tCus+=cusT; tKgs+=kgsT; tRecCD+=effRcd; tRecR+=r.rec_r;
 
       const pRow = prevRows.find(x => x.name === r.name);
-      const pRecT = pRow ? pRow.rec_cd+pRow.rec_r : null;
+      const pEffRcd = pRow ? effectiveEstabRecCD(pRow.name,pRow.rec_cd) : null;
+      const pRecT = pRow ? pEffRcd+pRow.rec_r : null;
       const pCusT = pRow ? pRow.cus_cd+pRow.cus_r : null;
-      const pm    = pRow ? margin(effectiveRecCD(pRow.name,pRow.rec_cd), pRow.rec_r, pCusT) : null;
-      if (pRow) { tPRec+=pRecT; tPCus+=pCusT; tPRecCD+=effectiveRecCD(pRow.g,pRow.rec_cd); tPRecR+=pRow.rec_r; hasPrevAny=true; }
+      const pm    = pRow ? margin(pEffRcd, pRow.rec_r, pCusT) : null;
+      if (pRow) { tPRec+=pRecT; tPCus+=pCusT; tPRecCD+=pEffRcd; tPRecR+=pRow.rec_r; hasPrevAny=true; }
 
       // Always render 2 MoM cells — parent table always has 7 cols
       let mom1 = '<td class="dna msep">--</td>';
@@ -839,15 +892,17 @@ function buildEstabChildRows(ger, mes, prevKey, mode, wrId, hasPrev) {
     const nc = hasPrev ? 4 : 2;
 
     bodyHtml = sorted.map(r => {
-      const mCD=margin(effectiveRecCD(r.name,r.rec_cd),0,r.cus_cd), mRE=margin(0,r.rec_r,r.cus_r);
-      const mTot=margin(effectiveRecCD(r.name,r.rec_cd),r.rec_r,r.cus_cd+r.cus_r);
-      tRC+=r.rec_cd; tRR+=r.rec_r; tCC+=r.cus_cd; tCR+=r.cus_r; tKC+=r.kgs_cd; tKR+=r.kgs_r;
+      const effRcdD=effectiveEstabRecCD(r.name,r.rec_cd);
+      const mCD=margin(effRcdD,0,r.cus_cd), mRE=margin(0,r.rec_r,r.cus_r);
+      const mTot=margin(effRcdD,r.rec_r,r.cus_cd+r.cus_r);
+      tRC+=effRcdD; tRR+=r.rec_r; tCC+=r.cus_cd; tCR+=r.cus_r; tKC+=r.kgs_cd; tKR+=r.kgs_r;
 
       const pRow=prevRows.find(x=>x.name===r.name);
-      const pmCD=pRow?margin(effectiveRecCD(pRow.name,pRow.rec_cd),0,pRow.cus_cd):null;
+      const pEffRcdD=pRow?effectiveEstabRecCD(pRow.name,pRow.rec_cd):null;
+      const pmCD=pRow?margin(pEffRcdD,0,pRow.cus_cd):null;
       const pmRE=pRow?margin(0,pRow.rec_r,pRow.cus_r):null;
-      const pmTot=pRow?margin(effectiveRecCD(pRow.name,pRow.rec_cd),pRow.rec_r,pRow.cus_cd+pRow.cus_r):null;
-      if (pRow) { tPRC+=pRow.rec_cd; tPRR+=pRow.rec_r; tPCC+=pRow.cus_cd; tPCR+=pRow.cus_r; hasPrevAny=true; }
+      const pmTot=pRow?margin(pEffRcdD,pRow.rec_r,pRow.cus_cd+pRow.cus_r):null;
+      if (pRow) { tPRC+=pEffRcdD; tPRR+=pRow.rec_r; tPCC+=pRow.cus_cd; tPCR+=pRow.cus_r; hasPrevAny=true; }
 
       const dR=hasPrev?(pRow?`${deltaCell(r.rec_cd,pRow.rec_cd)}${deltaCell(r.rec_r,pRow.rec_r)}`:'<td class="dna">--</td><td class="dna">--</td>'):'';;
       const dC=hasPrev?(pRow?`${deltaCell(r.cus_cd,pRow.cus_cd)}${deltaCell(r.cus_r,pRow.cus_r)}`:'<td class="dna">--</td><td class="dna">--</td>'):'';;
@@ -872,7 +927,7 @@ function buildEstabChildRows(ger, mes, prevKey, mode, wrId, hasPrev) {
 
       return `<tr>
         <td>${r.name}</td>
-        <td class="sep" style="color:var(--accent)">${fmtR(r.rec_cd)}</td><td style="color:var(--accent)">${fmtR(r.rec_r)}</td>${dR}
+        <td class="sep" style="color:var(--accent)">${fmtR(effRcdD)}</td><td style="color:var(--accent)">${fmtR(r.rec_r)}</td>${dR}
         <td class="sep" style="color:var(--red)">${fmtR(r.cus_cd)}</td><td style="color:var(--red)">${fmtR(r.cus_r)}</td>${dC}
         <td class="sep" style="color:var(--amber)">${fmt(r.kgs_cd)} kg</td><td style="color:var(--amber)">${fmt(r.kgs_r)} kg</td>${dK}
         <td class="${mCD===null?'mna':mCD>=0?'mpos':'mneg'} sep">${pillHtml(mCD)}</td>
@@ -927,10 +982,11 @@ function buildEstabChildRows(ger, mes, prevKey, mode, wrId, hasPrev) {
     let tRec=0, tCus=0, tKgs=0;
 
     bodyHtml = sorted.map(r => {
-      const recBruta = effectiveRecCD(r.name, r.rec_cd) + r.rec_r;
+      const effRcdO  = effectiveEstabRecCD(r.name, r.rec_cd);
+      const recBruta = effRcdO + r.rec_r;
       const cusT     = r.cus_cd + r.cus_r;
       const kgsT     = r.kgs_cd + r.kgs_r;
-      const m        = margin(effectiveRecCD(r.name, r.rec_cd), r.rec_r, cusT);
+      const m        = margin(effRcdO, r.rec_r, cusT);
       tRec += recBruta; tCus += cusT; tKgs += kgsT;
       return `<tr>
         <td>${r.name}</td>
