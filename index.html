@@ -2252,19 +2252,25 @@ function _buildWaterfallFromEntries(entries) {
 let paData       = [];   // full dataset
 let paHeaders    = [];   // columns (excluding Status)
 let paStatusCol  = -1;   // index of Status column
-let paFilter     = 'all'; // 'all' | 'Em andamento' | 'Monitoramento'
+let paFilter     = 'Em andamento'; // 'Em andamento' | 'Monitoramento'
 
-async function loadPlanosAcao() {
+const PA_URLS = {
+  'Em andamento': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQaTWaomBJWHoIogvDt5lQUICng7tTO8sWTQ2DCl6kV57z8StaGrU77OUmu9O6QCZEbSxBRrMn26CfA/pub?single=true&output=csv&gid=378195333',
+  'Monitoramento': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQaTWaomBJWHoIogvDt5lQUICng7tTO8sWTQ2DCl6kV57z8StaGrU77OUmu9O6QCZEbSxBRrMn26CfA/pub?single=true&output=csv&gid=2045257024',
+};
+
+async function loadPlanosAcao(filter) {
   const errEl = document.getElementById('pa-error');
   try {
     errEl.style.display = 'none';
-    const res = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vQaTWaomBJWHoIogvDt5lQUICng7tTO8sWTQ2DCl6kV57z8StaGrU77OUmu9O6QCZEbSxBRrMn26CfA/pub?gid=378195333&single=true&output=csv&_t=' + Date.now(), { cache: 'no-store' });
+    if (filter) paFilter = filter;
+    const url = PA_URLS[paFilter] || PA_URLS['Em andamento'];
+    const res = await fetch(url + '&_t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
     const rows = parseCSV(text);
     if (!rows.length) throw new Error('Planilha vazia ou sem dados.');
 
-    // Detect columns
     const allCols = Object.keys(rows[0]);
     paStatusCol = allCols.findIndex(h => h.trim().toLowerCase() === 'status');
     paHeaders   = allCols.filter((_, i) => i !== paStatusCol);
@@ -2281,25 +2287,17 @@ async function loadPlanosAcao() {
 function buildPaFilters() {
   const wrap = document.getElementById('pa-filter-wrap');
   if (!wrap) return;
-  const statuses = ['all', 'Em andamento', 'Monitoramento'];
+  const statuses = ['Em andamento', 'Monitoramento'];
   wrap.innerHTML = statuses.map(s => {
-    const lbl = s === 'all' ? 'Todos' : s;
-    const cls = s === 'all' ? 'active-all' : '';
-    return `<button class="pa-filter-btn ${cls}" onclick="setPaFilter('${s}')">${lbl}</button>`;
+    const cls = s === paFilter ? (s === 'Em andamento' ? 'active-em' : 'active-mon') : '';
+    return `<button class="pa-filter-btn ${cls}" onclick="setPaFilter('${s}')">${s}</button>`;
   }).join('');
 }
 
 function setPaFilter(val) {
   paFilter = val;
-  document.querySelectorAll('.pa-filter-btn').forEach(b => {
-    b.className = 'pa-filter-btn';
-  });
-  const btns = document.querySelectorAll('.pa-filter-btn');
-  const idx  = ['all','Em andamento','Monitoramento'].indexOf(val);
-  if (btns[idx]) {
-    btns[idx].classList.add(val === 'all' ? 'active-all' : val === 'Em andamento' ? 'active-em' : 'active-mon');
-  }
-  buildPlanosAcao();
+  // Re-load data from the corresponding sheet
+  loadPlanosAcao(val);
 }
 
 function buildPlanosAcao() {
@@ -2311,12 +2309,8 @@ function buildPlanosAcao() {
   const allCols = Object.keys(paData[0]);
   const statusKey = paStatusCol >= 0 ? allCols[paStatusCol] : null;
 
-  // Filter
-  const filtered = paData.filter(row => {
-    if (paFilter === 'all') return true;
-    const sv = (statusKey ? row[statusKey] : '').trim();
-    return sv.toLowerCase() === paFilter.toLowerCase();
-  });
+  // Data is already filtered by sheet — show all rows
+  const filtered = paData;
 
   if (count) count.textContent = `${filtered.length} registro${filtered.length !== 1 ? 's' : ''}`;
 
@@ -2435,7 +2429,7 @@ function switchTab(name, btn) {
 
   if (name==='postsales') { buildPostSalesMonthSel(); buildPostSales(); }
   if (name==='waterfall') { if (!wfChart) loadWaterfall(); }
-  if (name==='planosacao') { if (!paData.length) loadPlanosAcao(); else buildPlanosAcao(); }
+  if (name==='planosacao') { loadPlanosAcao(); }
 }
 
 // RENDER ALL
