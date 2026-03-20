@@ -256,6 +256,43 @@
   .ps-view-btn:hover { background:var(--hover); }
   .ps-view-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
+
+  /* Planos de Ação */
+  /* ── Planos de Ação filter buttons ── */
+  .pa-filter-btn { background:var(--card); color:var(--text2); border:1px solid var(--bord2); border-radius:20px; padding:5px 18px; font-size:11px; font-weight:600; cursor:pointer; font-family:'Sora',sans-serif; transition:.15s; white-space:nowrap; }
+  .pa-filter-btn:hover { background:#dbeafe; color:var(--accent); border-color:var(--accent); }
+  .pa-filter-btn.active-em,
+  .pa-filter-btn.active-mon,
+  .pa-filter-btn.active-all { background:var(--accent); color:#fff; border-color:var(--accent); }
+  /* ── Planos de Ação table ── */
+  .pa-tbl-outer { border-radius:10px; border:1px solid var(--bord2); overflow:hidden; }
+  #tbl-planosacao { width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed; }
+  #tbl-planosacao colgroup col.pa-col-ger   { width:100px; }
+  #tbl-planosacao colgroup col.pa-col-ctx   { width:24%; }
+  #tbl-planosacao colgroup col.pa-col-plan  { width:24%; }
+  #tbl-planosacao colgroup col.pa-col-prazo { width:64px; }
+  #tbl-planosacao colgroup col.pa-col-resp  { width:115px; }
+  #tbl-planosacao colgroup col.pa-col-pct   { width:105px; }
+  #tbl-planosacao colgroup col.pa-col-est   { width:auto; }
+  #tbl-planosacao thead th { background:#3b82f6; color:#fff; padding:11px 14px; text-align:left; font-size:11.5px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; position:sticky; top:0; z-index:2; vertical-align:middle; line-height:1.35; }
+  #tbl-planosacao tbody tr { border-bottom:1px solid var(--border); }
+  #tbl-planosacao tbody tr:nth-child(even) { background:#f8faff; }
+  #tbl-planosacao tbody tr:hover { background:#eff6ff; }
+  #tbl-planosacao tbody td { padding:13px 12px; color:var(--text2); vertical-align:top; line-height:1.55; word-break:break-word; overflow-wrap:break-word; white-space:normal; font-size:13.5px; }
+  #tbl-planosacao tbody td.pa-ger { font-weight:700; color:var(--text); font-size:12px; white-space:normal; }
+  #tbl-planosacao tbody td.pa-num { text-align:center; white-space:nowrap; font-weight:600; }
+  #tbl-planosacao tbody td.pa-center { text-align:left; }
+  #tbl-planosacao .pa-ol { margin:0; padding-left:15px; }
+  #tbl-planosacao .pa-ol li { margin-bottom:6px; line-height:1.55; word-break:break-word; }
+  #tbl-planosacao .pa-ol li:last-child { margin-bottom:0; }
+  #tbl-planosacao .pa-ol li b, #tbl-planosacao .pa-ol li strong { font-weight:700; color:var(--text); }
+  #tbl-planosacao p { margin:0; line-height:1.55; word-break:break-word; }
+  .pa-badge-em    { display:inline-block; background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; border-radius:12px; padding:3px 11px; font-size:9px; font-weight:700; white-space:nowrap; }
+  .pa-badge-mon   { display:inline-block; background:#ede9fe; color:#7c3aed; border:1px solid #c4b5fd; border-radius:12px; padding:3px 11px; font-size:9px; font-weight:700; white-space:nowrap; }
+  .pa-badge-other { display:inline-block; background:var(--hover); color:var(--text3); border:1px solid var(--bord2); border-radius:12px; padding:3px 11px; font-size:9px; font-weight:700; white-space:nowrap; }
+  .pa-marg-pos { color:var(--green); font-weight:700; }
+  .pa-marg-neg { color:var(--red); font-weight:700; }
+
 </style>
 </head>
 <body>
@@ -302,6 +339,8 @@
   <button class="tbtn" onclick="switchTab('detalhe',this)">Scorecard Detalhado</button>
   <button class="tbtn" onclick="switchTab('ofensores',this)">Ofensores</button>
   <button class="tbtn" onclick="switchTab('postsales',this)">Post-Sales &lt;&gt; XP</button>
+  <button class="tbtn" onclick="switchTab('planosacao',this)">Planos de Ação</button>
+  <button class="tbtn" onclick="switchTab('waterfall',this)">Revenue Waterfall</button>
   <button class="tbtn" onclick="switchTab('historico',this)">Historico por Gerador</button>
   <button class="tbtn" onclick="switchTab('graficos',this)">Graficos</button>
 </div>
@@ -359,6 +398,45 @@
 
   </div>
   <div class="tbl-wrap"><table id="tbl-postsales"></table></div>
+</div>
+
+
+
+<!-- TAB REVENUE WATERFALL -->
+<div class="tpanel" id="tab-waterfall">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+    <div>
+      <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--text);">Projeção de Receita</h2>
+      <p style="margin:2px 0 0;font-size:11px;color:var(--text3);">Valores em <strong>BRL Milhares</strong></p>
+      <p id="wf-subtitle" style="margin:2px 0 0;font-size:10px;color:var(--text3);"></p>
+    </div>
+    <button class="reload-btn" style="margin-left:auto;" onclick="loadWaterfall()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5c1.8 0 3.4.87 4.4 2.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12.5 1.5v3.2h-3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Atualizar
+    </button>
+  </div>
+  <div id="wf-error" style="display:none;color:var(--red);font-size:12px;padding:12px 0;"></div>
+  <div style="position:relative;background:var(--card);border:1px solid var(--bord2);border-radius:12px;padding:20px 24px 14px;max-width:860px;">
+    <canvas id="chartWaterfall" height="230"></canvas>
+  </div>
+  <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;">
+    <div class="li"><div class="ld" style="background:var(--accent)"></div>Base / Total</div>
+    <div class="li"><div class="ld" style="background:var(--green)"></div>Variação Positiva</div>
+    <div class="li"><div class="ld" style="background:var(--red)"></div>Variação Negativa (Churn)</div>
+  </div>
+</div>
+
+<!-- TAB PLANOS DE AÇÃO -->
+<div class="tpanel" id="tab-planosacao">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+    <span style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Status:</span>
+    <div id="pa-filter-wrap" style="display:flex;gap:6px;"></div>
+    <span id="pa-count" style="margin-left:auto;font-size:10px;color:var(--text3);"></span>
+  </div>
+  <div class="tbl-wrap" id="pa-tbl-wrap">
+    <table id="tbl-planosacao"></table>
+  </div>
+  <div id="pa-error" style="display:none;color:var(--red);font-size:12px;padding:16px;"></div>
 </div>
 
 <!-- TAB HISTÓRICO POR GERADOR -->
@@ -489,29 +567,38 @@ let monthsMeta          = [];
 
 // ══ CSV PARSER ══════════════════════════════════════════════════════════
 function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-  // Robust CSV split (handles quoted fields with commas)
-  function splitLine(line) {
-    const result = []; let cur = ''; let inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') { inQ = !inQ; }
-      else if (c === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
-      else { cur += c; }
+  // Full RFC-4180 parser — handles quoted fields with embedded newlines and commas
+  function parseFields(str) {
+    const rows = [];
+    let row = [], cur = '', inQ = false, i = 0;
+    while (i < str.length) {
+      const ch = str[i];
+      if (inQ) {
+        if (ch === '"') {
+          if (str[i+1] === '"') { cur += '"'; i += 2; continue; }
+          inQ = false; i++; continue;
+        }
+        cur += ch; i++; continue;
+      }
+      if (ch === '"') { inQ = true; i++; continue; }
+      if (ch === ',') { row.push(cur); cur = ''; i++; continue; }
+      if (ch === '\r' && str[i+1] === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; i += 2; continue; }
+      if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; i++; continue; }
+      cur += ch; i++;
     }
-    result.push(cur.trim());
-    return result;
+    row.push(cur);
+    if (row.some(v => v !== '')) rows.push(row);
+    return rows;
   }
-  const headers = splitLine(lines[0]).map(h => h.replace(/"/g,'').trim().toLowerCase());
-  return lines.slice(1).filter(l => l.trim()).map(line => {
-    const vals = splitLine(line);
+  const rows = parseFields(text.trim());
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(h => h.trim().toLowerCase());
+  return rows.slice(1).filter(r => r.some(v => v.trim())).map(vals => {
     const obj = {};
-    headers.forEach((h, i) => { obj[h] = (vals[i] || '').replace(/"/g,'').trim(); });
+    headers.forEach((h, i) => { obj[h] = (vals[i] || '').trim(); });
     return obj;
   });
 }
-
 function num(v) { const n = parseFloat((v||'').replace(',','.')); return isNaN(n) ? 0 : n; }
 
 // ══ LOAD & BUILD DATA ═══════════════════════════════════════════════════
@@ -1963,6 +2050,374 @@ function buildPostSales() {
     </tbody>`;
 }
 
+
+
+// ══ REVENUE WATERFALL ═══════════════════════════════════════════════════════
+let wfChart = null;
+
+async function loadWaterfall() {
+  const errEl = document.getElementById('wf-error');
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vQaTWaomBJWHoIogvDt5lQUICng7tTO8sWTQ2DCl6kV57z8StaGrU77OUmu9O6QCZEbSxBRrMn26CfA/pub?gid=1253725602&single=true&output=csv&_t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+
+    // Parse CSV preserving duplicate column names by appending _2, _3 etc.
+    function parseCsvFull(txt) {
+      const rows = [];
+      let row=[], cur='', inQ=false, i=0;
+      while(i<txt.length){
+        const ch=txt[i];
+        if(inQ){if(ch==='"'){if(txt[i+1]==='"'){cur+='"';i+=2;continue;}inQ=false;i++;continue;}cur+=ch;i++;continue;}
+        if(ch==='"'){inQ=true;i++;continue;}
+        if(ch===','){row.push(cur);cur='';i++;continue;}
+        if((ch==='\r'&&txt[i+1]==='\n')||(ch==='\n')){row.push(cur);rows.push(row);row=[];cur='';i+=(ch==='\r'?2:1);continue;}
+        cur+=ch;i++;
+      }
+      row.push(cur);
+      if(row.some(v=>v!==''))rows.push(row);
+      return rows;
+    }
+
+    const rawRows = parseCsvFull(text.trim());
+    if (rawRows.length < 2) throw new Error('Sem dados suficientes.');
+
+    // Build unique header names preserving order
+    const seen = {};
+    const headers = rawRows[0].map(h => {
+      const base = h.trim();
+      if(!seen[base]){ seen[base]=1; return base; }
+      seen[base]++;
+      return base + ' (' + seen[base] + ')';
+    });
+
+    const valRow = rawRows[1];
+    const entries = headers.map((h,i) => ({ label: h, value: valRow[i] || '0' })).filter(e => e.label);
+
+    if (!entries.length) throw new Error('Sem dados.');
+    _buildWaterfallFromEntries(entries);
+  } catch(e) {
+    errEl.style.display = '';
+    errEl.textContent = '⚠️ ' + e.message;
+  }
+}
+function buildWaterfall(rows) {
+  if (!rows.length) return;
+
+  // Use raw CSV re-parse to preserve duplicate column names
+  // rows[0] has keys, but duplicate cols are lost — re-read from the raw headers
+  // Instead: use paData-style approach reading ALL keys preserving order
+  // We parse differently: get headers row directly from the CSV text
+  // Since we already have rows[], let's use a different trick:
+  // Re-fetch header order from the first row object keys — but duplicates are gone.
+  // Solution: add an index suffix to duplicate headers during loadWaterfall fetch.
+
+  // For now use entries as-is but with the fix applied in loadWaterfall.
+  // This function receives pre-processed entries array instead.
+  if (rows.__wfEntries) {
+    _buildWaterfallFromEntries(rows.__wfEntries);
+    return;
+  }
+
+  const firstRow = rows[0];
+  const keys = Object.keys(firstRow);
+
+  function parseVal(raw) {
+    if (!raw || !raw.trim()) return 0;
+    let s = raw.trim();
+    const hasDot = s.includes('.'), hasComma = s.includes(',');
+    if (hasDot && hasComma) { s = s.replace(/\./g,'').replace(',','.'); }
+    else if (hasDot && /\.\d{3}$/.test(s)) { s = s.replace(/\./g,''); }
+    else if (hasComma && /,\d{3}$/.test(s)) { s = s.replace(/,/g,''); }
+    else if (hasComma) { s = s.replace(',','.'); }
+    return parseFloat(s) || 0;
+  }
+
+  const entries = keys.map(k => ({ label: k.trim(), value: parseVal(firstRow[k]) })).filter(e => e.label);
+  _buildWaterfallFromEntries(entries);
+}
+
+function _buildWaterfallFromEntries(entries) {
+  function parseVal(raw) {
+    if (!raw || typeof raw !== 'string' || !raw.trim()) return typeof raw === 'number' ? raw : 0;
+    if (typeof raw === 'number') return raw;
+    let s = raw.trim();
+    const hasDot = s.includes('.'), hasComma = s.includes(',');
+    if (hasDot && hasComma) { s = s.replace(/\./g,'').replace(',','.'); }
+    else if (hasDot && /\.\d{3}$/.test(s)) { s = s.replace(/\./g,''); }
+    else if (hasComma && /,\d{3}$/.test(s)) { s = s.replace(/,/g,''); }
+    else if (hasComma) { s = s.replace(',','.'); }
+    return parseFloat(s) || 0;
+  }
+
+  function fmtN(v) {
+    return Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+  }
+
+  const isTotalLabel = l => /^jan|fev.*estim|^1\s*t\s*|^2\s*t\s*|1t\s*20|2t\s*20|trimest|^total/i.test(l.trim());
+  const NAVY='#1e3a5f', GREEN='#16a34a', RED='#dc2626';
+
+  const labels=[], floatingData=[], colors=[], rawVals=[], barTypes=[];
+  let running = 0;
+
+  entries.forEach(({ label, value }) => {
+    const v       = typeof value === 'number' ? value : parseVal(value);
+    const isTotal = isTotalLabel(label);
+    const isNeg   = !isTotal && v < 0;
+
+    labels.push(label);
+    rawVals.push(v);
+
+    if (isTotal) {
+      running = Math.abs(v);
+      floatingData.push([0, running]);
+      colors.push(NAVY);
+      barTypes.push('total');
+    } else if (isNeg) {
+      const top = running, bottom = running + v;
+      floatingData.push([bottom, top]);
+      running = bottom;
+      colors.push(RED);
+      barTypes.push('neg');
+    } else {
+      floatingData.push([running, running + v]);
+      running += v;
+      colors.push(v === 0 ? '#94a3b8' : GREEN);
+      barTypes.push(v === 0 ? 'zero' : 'pos');
+    }
+  });
+
+  const subtitle = document.getElementById('wf-subtitle');
+  if (subtitle) subtitle.textContent = `${entries.length} barras`;
+
+  if (wfChart) { wfChart.destroy(); wfChart = null; }
+  const canvas = document.getElementById('chartWaterfall');
+  if (!canvas) return;
+
+  wfChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: floatingData, backgroundColor: colors, borderColor: colors, borderWidth: 0, borderRadius: 3, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor:'#1e3a8a', titleColor:'#bfdbfe', bodyColor:'#dbeafe', cornerRadius:6,
+          callbacks: { label: ctx => {
+            const raw=rawVals[ctx.dataIndex], t=barTypes[ctx.dataIndex];
+            if(t==='total') return ` ${fmtN(raw)}`;
+            if(t==='neg')   return ` (${fmtN(raw)})`;
+            if(t==='zero')  return ` 0`;
+            return ` +${fmtN(raw)}`;
+          }}
+        }
+      },
+      scales: {
+        x: { ticks:{color:'#6b7280',font:{family:"'Sora',sans-serif",size:10},maxRotation:45,minRotation:30}, grid:{display:false} },
+        y: { beginAtZero:true, ticks:{color:'#6b7280',font:{size:10},callback:v=>fmtN(v)}, grid:{color:'#e8ecf4'} }
+      }
+    },
+    plugins: [{
+      afterDatasetsDraw(chart) {
+        const {ctx:cx} = chart;
+        const meta = chart.getDatasetMeta(0);
+        cx.save(); cx.textAlign='center';
+        meta.data.forEach((bar,i) => {
+          const raw=rawVals[i], type=barTypes[i];
+          if(type==='zero') return;
+          const top=Math.min(bar.y,bar.base), bot=Math.max(bar.y,bar.base);
+          const barH=bot-top, barMid=top+barH/2;
+          if(type==='total') {
+            if(barH>26){cx.font="bold 12px 'Sora',sans-serif";cx.fillStyle='#fff';cx.textBaseline='middle';cx.fillText(fmtN(raw),bar.x,barMid);}
+            else{cx.font="bold 11px 'Sora',sans-serif";cx.fillStyle=NAVY;cx.textBaseline='alphabetic';cx.fillText(fmtN(raw),bar.x,top-7);}
+          } else if(type==='neg') {
+            cx.font="bold 10.5px 'Sora',sans-serif";cx.fillStyle=RED;cx.textBaseline='alphabetic';
+            cx.fillText(`(${fmtN(raw)})`,bar.x,top-7);
+          } else {
+            cx.font="bold 10.5px 'Sora',sans-serif";cx.fillStyle='#15803d';cx.textBaseline='alphabetic';
+            cx.fillText(`+${fmtN(raw)}`,bar.x,top-7);
+          }
+        });
+        cx.restore();
+      }
+    }]
+  });
+}
+
+// ══ PLANOS DE AÇÃO ══════════════════════════════════════════════════════════
+let paData       = [];   // full dataset
+let paHeaders    = [];   // columns (excluding Status)
+let paStatusCol  = -1;   // index of Status column
+let paFilter     = 'all'; // 'all' | 'Em andamento' | 'Monitoramento'
+
+async function loadPlanosAcao() {
+  const errEl = document.getElementById('pa-error');
+  try {
+    errEl.style.display = 'none';
+    const res = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vQaTWaomBJWHoIogvDt5lQUICng7tTO8sWTQ2DCl6kV57z8StaGrU77OUmu9O6QCZEbSxBRrMn26CfA/pub?gid=378195333&single=true&output=csv&_t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (!rows.length) throw new Error('Planilha vazia ou sem dados.');
+
+    // Detect columns
+    const allCols = Object.keys(rows[0]);
+    paStatusCol = allCols.findIndex(h => h.trim().toLowerCase() === 'status');
+    paHeaders   = allCols.filter((_, i) => i !== paStatusCol);
+    paData      = rows;
+
+    buildPaFilters();
+    buildPlanosAcao();
+  } catch(e) {
+    errEl.style.display = '';
+    errEl.textContent   = '⚠️ Não foi possível carregar Planos de Ação: ' + e.message;
+  }
+}
+
+function buildPaFilters() {
+  const wrap = document.getElementById('pa-filter-wrap');
+  if (!wrap) return;
+  const statuses = ['all', 'Em andamento', 'Monitoramento'];
+  wrap.innerHTML = statuses.map(s => {
+    const lbl = s === 'all' ? 'Todos' : s;
+    const cls = s === 'all' ? 'active-all' : '';
+    return `<button class="pa-filter-btn ${cls}" onclick="setPaFilter('${s}')">${lbl}</button>`;
+  }).join('');
+}
+
+function setPaFilter(val) {
+  paFilter = val;
+  document.querySelectorAll('.pa-filter-btn').forEach(b => {
+    b.className = 'pa-filter-btn';
+  });
+  const btns = document.querySelectorAll('.pa-filter-btn');
+  const idx  = ['all','Em andamento','Monitoramento'].indexOf(val);
+  if (btns[idx]) {
+    btns[idx].classList.add(val === 'all' ? 'active-all' : val === 'Em andamento' ? 'active-em' : 'active-mon');
+  }
+  buildPlanosAcao();
+}
+
+function buildPlanosAcao() {
+  const tbl   = document.getElementById('tbl-planosacao');
+  const wrap  = document.getElementById('pa-tbl-wrap');
+  const count = document.getElementById('pa-count');
+  if (!tbl || !paData.length) return;
+
+  const allCols = Object.keys(paData[0]);
+  const statusKey = paStatusCol >= 0 ? allCols[paStatusCol] : null;
+
+  // Filter
+  const filtered = paData.filter(row => {
+    if (paFilter === 'all') return true;
+    const sv = (statusKey ? row[statusKey] : '').trim();
+    return sv.toLowerCase() === paFilter.toLowerCase();
+  });
+
+  if (count) count.textContent = `${filtered.length} registro${filtered.length !== 1 ? 's' : ''}`;
+
+  // Detect numeric-ish cols for right-align
+  const isNumCol = paHeaders.map(h => {
+    const sample = filtered.slice(0, 5).map(r => r[h] || '').filter(Boolean);
+    return sample.length > 0 && sample.every(v => !isNaN(v.replace(/[R$%,.\s]/g, '').trim()));
+  });
+
+  // Helper: convert "1. foo\n2. bar" text into <ol>
+  function paFmtList(raw) {
+    if (!raw) return '<span style="color:var(--text3)">--</span>';
+
+    // Split on inline numbered patterns like "1. " "2. " regardless of newlines
+    // First try splitting on \n, then fall back to inline split on /(?=\d+[.)\s])/
+    let items = [];
+
+    // Try newline split first
+    const byLine = raw.split(/\n/).map(l => l.trim()).filter(Boolean);
+    const hasNewlineNums = byLine.filter(l => /^\d+[.)\s]/.test(l)).length >= 2;
+
+    if (hasNewlineNums) {
+      items = byLine;
+    } else {
+      // Split inline: "1. foo 2. bar 3. baz" → look for pattern " N. " or "N. " at start
+      // Use lookahead to split before digit+dot sequences
+      const parts = raw.split(/(?=\s\d+[.)\s])/).map(s => s.trim()).filter(Boolean);
+      if (parts.length >= 2 && parts.every(p => /^\d+/.test(p))) {
+        items = parts;
+      } else {
+        // Single text or unrecognized: wrap in a single paragraph with line breaks
+        const lines = byLine.length > 1 ? byLine : [raw];
+        if (lines.length === 1) return `<p style="margin:0;line-height:1.55;">${raw}</p>`;
+        return `<ol class="pa-ol">${lines.map(l => `<li>${l.replace(/^[-•*\d.)\s]+/,'').trim()}</li>`).join('')}</ol>`;
+      }
+    }
+
+    const rendered = items.map(l => {
+      const clean = l.replace(/^\s*\d+[.)\s]+/, '').trim();
+      return `<li>${clean}</li>`;
+    });
+    return `<ol class="pa-ol">${rendered.join('')}</ol>`;
+  }
+
+  // Helper: format % values
+  function paMarg(raw) {
+    if (!raw || raw.trim() === '-' || raw.trim() === '') return '<span style="color:var(--text3)">--</span>';
+    const num = parseFloat(raw.replace('%','').replace(',','.'));
+    if (isNaN(num)) return raw;
+    const cls = num >= 0 ? 'pa-marg-pos' : 'pa-marg-neg';
+    return `<span class="${cls}">${raw.trim()}</span>`;
+  }
+
+  // Classify columns by keyword
+  const hLower = paHeaders.map(h => h.toLowerCase());
+  const colType = paHeaders.map(h => {
+    const hl = h.toLowerCase();
+    if (hl.includes('gerador')) return 'ger';
+    if (hl.includes('contexto') || hl.includes('diagnóstico') || hl.includes('diagnostico')) return 'list';
+    if (hl.includes('plano') || hl.includes('ação') || hl.includes('acao') || hl.includes('update')) return 'list';
+    if (hl.includes('prazo')) return 'center';
+    if (hl.includes('responsável') || hl.includes('responsavel') || hl.includes('monitorar')) return 'center';
+    if (hl.includes('margem') || hl.includes('baseline') || hl.includes('estimada') || hl.includes('gross') || hl.includes('%') || hl.includes('imposto')) return 'marg';
+    if (isNumCol[hLower.indexOf(hl)]) return 'num';
+    return 'text';
+  });
+
+  const colgroup = `<colgroup>${paHeaders.map((h,i) => {
+    const t = colType[i];
+    const cls = t==='ger'?'pa-col-ger':t==='center'&&h.toLowerCase().includes('prazo')?'pa-col-prazo':t==='center'?'pa-col-resp':t==='marg'?'pa-col-pct':t==='list'?'pa-col-plan':t==='text'?'pa-col-plan':'pa-col-est';
+    return `<col class="${cls}">`;
+  }).join('')}</colgroup>`;
+
+  const thead = `<thead><tr>${paHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead>`;
+
+  const tbody = `<tbody>${filtered.map(row => {
+    const cells = paHeaders.map((h, hi) => {
+      const raw = (row[h] || '').trim();
+      const type = colType[hi];
+      if (type === 'ger')    return `<td class="pa-ger">${raw || '--'}</td>`;
+      if (type === 'list')   return `<td>${paFmtList(raw)}</td>`;
+      if (type === 'center') return `<td>${raw || '<span style="color:var(--text3)">--</span>'}</td>`;
+      if (type === 'marg')   return `<td>${paMarg(raw)}</td>`;
+      if (type === 'num')    return `<td>${raw || '--'}</td>`;
+      return `<td>${raw || '<span style="color:var(--text3)">--</span>'}</td>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('')}</tbody>`;
+
+  wrap.className = '';
+  wrap.innerHTML = '';
+  const outerDiv = document.createElement('div');
+  outerDiv.className = 'pa-tbl-outer';
+  outerDiv.style.maxHeight = '72vh';
+  outerDiv.style.overflowY = 'auto';
+  tbl.innerHTML = colgroup + thead + tbody;
+  outerDiv.appendChild(tbl);
+  wrap.appendChild(outerDiv);
+  return;
+}
+
 function switchTab(name, btn) {
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('active'));
@@ -1979,6 +2434,8 @@ function switchTab(name, btn) {
   if (name==='ofensores') { buildOfensoresMonthSel(); buildOfensores(); }
 
   if (name==='postsales') { buildPostSalesMonthSel(); buildPostSales(); }
+  if (name==='waterfall') { if (!wfChart) loadWaterfall(); }
+  if (name==='planosacao') { if (!paData.length) loadPlanosAcao(); else buildPlanosAcao(); }
 }
 
 // RENDER ALL
