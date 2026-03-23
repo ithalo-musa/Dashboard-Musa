@@ -335,18 +335,18 @@
 
 <!-- TABS -->
 <div class="tabs">
-  <button class="tbtn active" onclick="switchTab('geral',this)">Scorecard</button>
+  <button class="tbtn active" onclick="switchTab('planosacao',this)">Planos de Ação</button>
+  <button class="tbtn" onclick="switchTab('geral',this)">Scorecard</button>
   <button class="tbtn" onclick="switchTab('detalhe',this)">Scorecard Detalhado</button>
-  <button class="tbtn" onclick="switchTab('ofensores',this)">Ofensores</button>
-  <button class="tbtn" onclick="switchTab('postsales',this)">Post-Sales &lt;&gt; XP</button>
-  <button class="tbtn" onclick="switchTab('planosacao',this)">Planos de Ação</button>
   <button class="tbtn" onclick="switchTab('waterfall',this)">Revenue Waterfall</button>
   <button class="tbtn" onclick="switchTab('historico',this)">Historico por Gerador</button>
+  <button class="tbtn" onclick="switchTab('ofensores',this)">Ofensores</button>
+  <button class="tbtn" onclick="switchTab('postsales',this)">Post-Sales &lt;&gt; XP</button>
   <button class="tbtn" onclick="switchTab('graficos',this)">Graficos</button>
 </div>
 
 <!-- TAB GERAL -->
-<div class="tpanel active" id="tab-geral">
+<div class="tpanel" id="tab-geral">
   <div class="msel-wrap" id="geralMonthSelWrap"></div>
   <p style="font-size:10px;color:var(--text3);margin-bottom:12px;">Top 50 Geradores por Receita</p>
   <div class="tbl-wrap"><table id="tbl-geral"></table></div>
@@ -416,8 +416,10 @@
     </button>
   </div>
   <div id="wf-error" style="display:none;color:var(--red);font-size:12px;padding:12px 0;"></div>
-  <div style="position:relative;background:var(--card);border:1px solid var(--bord2);border-radius:12px;padding:20px 24px 14px;max-width:860px;">
-    <canvas id="chartWaterfall" height="230"></canvas>
+  <div style="position:relative;background:var(--card);border:1px solid var(--bord2);border-radius:12px;padding:20px 24px 14px;">
+    <div style="position:relative;height:300px;">
+      <canvas id="chartWaterfall"></canvas>
+    </div>
   </div>
   <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;">
     <div class="li"><div class="ld" style="background:var(--accent)"></div>Base / Total</div>
@@ -427,7 +429,7 @@
 </div>
 
 <!-- TAB PLANOS DE AÇÃO -->
-<div class="tpanel" id="tab-planosacao">
+<div class="tpanel active" id="tab-planosacao">
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
     <span style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Status:</span>
     <div id="pa-filter-wrap" style="display:flex;gap:6px;"></div>
@@ -1018,7 +1020,8 @@ function buildEstabChildRows(ger, mes, prevKey, mode, wrId, hasPrev) {
         <td class="sep" style="color:var(--red)">${fmtR(r.cus_cd)}</td><td style="color:var(--red)">${fmtR(r.cus_r)}</td>${dC}
         <td class="sep" style="color:var(--amber)">${fmt(r.kgs_cd)} kg</td><td style="color:var(--amber)">${fmt(r.kgs_r)} kg</td>${dK}
         <td class="${mCD===null?'mna':mCD>=0?'mpos':'mneg'} sep">${pillHtml(mCD)}</td>
-        <td class="${mRE===null?'mna':mRE>=0?'mpos':'mneg'}">${pillHtml(mRE)}</td>${dM}
+        <td class="${mRE===null?'mna':mRE>=0?'mpos':'mneg'}">${pillHtml(mRE)}</td>
+        <td class="${mTot===null?'mna':mTot>=0?'mpos':'mneg'}" style="font-weight:700;">${pillHtml(mTot)}</td>${dM}
         ${momCells}
       </tr>`;
     }).join('');
@@ -1311,7 +1314,7 @@ function buildDetalhe() {
       <th colspan="${nc+1}" style="border-left:1px solid var(--bord2);color:var(--accent)">RECEITA</th>
       <th colspan="${nc+1}" style="border-left:1px solid var(--bord2);color:var(--red)">CUSTO</th>
       <th colspan="${nc+1}" style="border-left:1px solid var(--bord2);color:var(--amber)">KGs</th>
-      <th colspan="${nc}" style="border-left:1px solid var(--bord2);color:var(--green)">MARG. LÍQUIDA %</th>
+      <th colspan="${nc+1}" style="border-left:1px solid var(--bord2);color:var(--green)">MARG. LÍQUIDA %</th>
       <th colspan="2" style="border-left:2px solid var(--bord2);color:#7c3aed;text-align:center;font-size:9px;letter-spacing:1px;text-transform:uppercase;">MoM ${momNote}</th>
     </tr>
     <tr class="srow">
@@ -1319,7 +1322,7 @@ function buildDetalhe() {
       <th class="sep tcd">CD</th><th class="trec">REC</th><th style="color:var(--accent);font-weight:700;">TOTAL</th>${hasPrev?'<th class="tdelta">&Delta;CD</th><th class="tdelta">&Delta;REC</th>':''}
       <th class="sep tcd">CD</th><th class="trec">REC</th><th style="color:var(--red);font-weight:700;">TOTAL</th>${hasPrev?'<th class="tdelta">&Delta;CD</th><th class="tdelta">&Delta;REC</th>':''}
       <th class="sep" style="color:var(--amber)">CD</th><th style="color:var(--amber)">REC</th><th style="color:var(--amber);font-weight:700;">TOTAL</th>${hasPrev?'<th class="tdelta">&Delta;CD</th><th class="tdelta">&Delta;REC</th>':''}
-      <th class="sep tcd">CD</th><th class="trec">REC</th>${hasPrev?'<th class="tdelta">&Delta;CD</th><th class="tdelta">&Delta;REC</th>':''}
+      <th class="sep tcd">CD</th><th class="trec">REC</th><th style="color:var(--green);font-weight:700;">TOTAL</th>${hasPrev?'<th class="tdelta">&Delta;CD</th><th class="tdelta">&Delta;REC</th>':''}
       <th class="tdelta" style="border-left:2px solid var(--bord2)">MoM RECEITA %</th>
       <th class="tdelta">MoM MARGEM</th>
     </tr></thead>
@@ -1366,7 +1369,8 @@ function buildDetalhe() {
         <td class="sep" style="color:var(--red)">${fmtR(d.cus_cd)}</td><td style="color:var(--red)">${fmtR(d.cus_r)}</td><td style="color:var(--red);font-weight:700;">${fmtR(cusTot)}</td>${dC}
         <td class="sep" style="color:var(--amber)">${fmt(d.kgs_cd)} kg</td><td style="color:var(--amber)">${fmt(d.kgs_r)} kg</td><td style="color:var(--amber);font-weight:700;">${fmt(kgsTot)} kg</td>${dK}
         <td class="${mCD===null?'mna':mCD>=0?'mpos':'mneg'} sep">${pillHtml(mCD)}</td>
-        <td class="${mRE===null?'mna':mRE>=0?'mpos':'mneg'}">${pillHtml(mRE)}</td>${dM}
+        <td class="${mRE===null?'mna':mRE>=0?'mpos':'mneg'}">${pillHtml(mRE)}</td>
+        <td class="${mTot===null?'mna':mTot>=0?'mpos':'mneg'}" style="font-weight:700;">${pillHtml(mTot)}</td>${dM}
         ${momRecTot}${momMarTot}
       </tr>${estabRowD}`;}).join('')}
     </tbody>
@@ -1375,7 +1379,7 @@ function buildDetalhe() {
       <td class="sep">${fmtR(tot.rc)}</td><td>${fmtR(tot.rr)}</td><td style="font-weight:700;color:var(--accent);">${fmtR(tot.rc+tot.rr)}</td>${hasPrev?'<td></td><td></td>':''}
       <td class="sep" style="color:var(--red)">${fmtR(tot.cc)}</td><td style="color:var(--red)">${fmtR(tot.cr)}</td><td style="font-weight:700;color:var(--red);">${fmtR(tot.cc+tot.cr)}</td>${hasPrev?'<td></td><td></td>':''}
       <td class="sep" style="color:var(--amber)">${fmt(tot.kc)} kg</td><td style="color:var(--amber)">${fmt(tot.kr)} kg</td><td style="font-weight:700;color:var(--amber);">${fmt(tot.kc+tot.kr)} kg</td>${hasPrev?'<td></td><td></td>':''}
-      <td class="sep">${pillHtml(margin(tot.rc,0,tot.cc))}</td><td>${pillHtml(margin(0,tot.rr,tot.cr))}</td>${hasPrev?'<td></td><td></td>':''}
+      <td class="sep">${pillHtml(margin(tot.rc,0,tot.cc))}</td><td>${pillHtml(margin(0,tot.rr,tot.cr))}</td>${(() => { const mT=margin(tot.rc, tot.rr, tot.cc+tot.cr); return `<td class="${mT===null?'mna':mT>=0?'mpos':'mneg'}" style="font-weight:700;">${pillHtml(mT)}</td>`; })()}${hasPrev?'<td></td><td></td>':''}
       <td class="dna" style="border-left:2px solid var(--bord2)">--</td>
       <td class="dna">--</td>
     </tr></tfoot>`;
@@ -2202,7 +2206,7 @@ function _buildWaterfallFromEntries(entries) {
       datasets: [{ data: floatingData, backgroundColor: colors, borderColor: colors, borderWidth: 0, borderRadius: 3, borderSkipped: false }]
     },
     options: {
-      responsive: true, animation: false,
+      responsive: true, maintainAspectRatio: false, animation: false,
       plugins: {
         legend: { display: false },
         tooltip: {
